@@ -1,0 +1,40 @@
+// Copiar a config.h (NO se versiona) y ajustar.
+#pragma once
+
+// --- Red: WiFi propio de la Raspberry Pi (2.4 GHz) ---
+#define WIFI_SSID      "AsistenteCasa"
+#define WIFI_PASSWORD  "clave-segura-123"
+
+// --- Broker MQTT (Mosquitto en la Pi) ---
+#define MQTT_BROKER    "10.42.0.1"
+#define MQTT_PORT      1883
+#define MQTT_USER      "asistente"
+#define MQTT_PASS      "cambia-esta-clave"
+#define MQTT_CLIENT_ID "esp32-camara1"
+#define TOPIC_DETECCIONES "casa/camara1/detecciones"
+#define TOPIC_CMD         "casa/camara1/cmd"
+
+// --- Librería exportada de Edge Impulse ---
+// Cambiar por el nombre real del .zip exportado (ej. <proyecto>_inferencing.h)
+#include <asistente_domestico_inferencing.h>
+
+// --- Comportamiento ---
+#define UMBRAL_CONFIANZA       0.6f   // contrato: 0.6
+#define INTERVALO_MS           5000   // inferir al menos cada 5 s
+#define REVISION_CAMBIO_MS     1000   // cada cuánto se compara la escena
+#define UMBRAL_CAMBIO_ESCENA   12     // diferencia media (0-255) para forzar inferencia
+
+// --- Cámara: descomentar UNA ---
+#define CAMARA_XIAO_ESP32S3_SENSE
+// #define CAMARA_ESP32S3_EYE
+// #define CAMARA_FREENOVE_ESP32S3
+
+// Servidor HTTP con /capture (JPEG) para el dashboard
+#define HABILITAR_HTTP_CAPTURE 1
+
+// Clases del contrato (mismo orden y nombres que en Edge Impulse)
+static const char* const CLASES[] = {
+  "manzana", "tomate", "huevo", "limon", "zanahoria", "leche",
+  "taza", "botella", "libro", "zapato"
+};
+static const int N_CLASES = sizeof(CLASES) / sizeof(CLASES[0]);

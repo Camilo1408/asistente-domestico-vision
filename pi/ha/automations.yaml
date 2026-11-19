@@ -1,0 +1,223 @@
+# Sintaxis de HA 2024.10+ (triggers/actions)
+
+- id: modo_a_mqtt
+  alias: "Modo -> MQTT"
+  description: "Publica el modo activo (retain) al cambiarlo y al arrancar HA"
+  triggers:
+    - trigger: state
+      entity_id: input_select.modo_asistente
+    - trigger: homeassistant
+      event: start
+  actions:
+    - action: mqtt.publish
+      data:
+        topic: casa/asistente/modo
+        payload: "{{ states('input_select.modo_asistente') }}"
+        retain: true
+
+- id: compras_huevos
+  alias: "Compras: pocos huevos"
+  description: "Menos de 2 huevos -> lista de compras + notificación"
+  triggers:
+    - trigger: numeric_state
+      entity_id: sensor.inventario_huevo
+      below: 2
+      for: "00:00:20"
+  actions:
+    - action: shopping_list.add_item
+      data:
+        name: Huevos
+    - action: persistent_notification.create
+      data:
+        title: Lista de compras
+        message: "Quedan menos de 2 huevos. Añadido: Huevos."
+    - action: script.avisar_celular
+      data:
+        title: Lista de compras
+        message: "Quedan menos de 2 huevos. Añadido: Huevos."
+
+- id: compras_leche
+  alias: "Compras: sin leche"
+  triggers:
+    - trigger: numeric_state
+      entity_id: sensor.inventario_leche
+      below: 1
+      for: "00:00:20"
+  actions:
+    - action: shopping_list.add_item
+      data:
+        name: Leche
+    - action: persistent_notification.create
+      data:
+        title: Lista de compras
+        message: "Se acabó la leche. Añadido: Leche."
+    - action: script.avisar_celular
+      data:
+        title: Lista de compras
+        message: "Se acabó la leche. Añadido: Leche."
+
+- id: resumen_diario_pedir
+  alias: "Resumen diario 19:00 - pedir"
+  triggers:
+    - trigger: time
+      at: "19:00:00"
+  actions:
+    - action: input_select.select_option
+      target:
+        entity_id: input_select.modo_asistente
+      data:
+        option: cocina
+    - delay: "00:00:03"
+    - action: mqtt.publish
+      data:
+        topic: casa/asistente/pedir
+        payload: resumen
+
+- id: resumen_diario_notificar
+  alias: "Resumen diario 19:00 - notificar"
+  description: "Cuando llega la respuesta originada por el resumen, la envía como notificación"
+  triggers:
+    - trigger: mqtt
+      topic: casa/asistente/respuesta
+  conditions:
+    - condition: template
+      value_template: "{{ trigger.payload_json.origen == 'resumen' }}"
+  actions:
+    - action: persistent_notification.create
+      data:
+        title: Resumen del día
+        message: "{{ trigger.payload_json.texto }}"
+    - action: script.avisar_celular
+      data:
+        title: Resumen del día
+        message: "{{ trigger.payload_json.texto }}"
+
+- id: camara_a_mqtt
+  alias: "Cámara activa -> MQTT"
+  description: "Publica la cámara que usa el asistente (camara1 = ESP32, iphone = app IP)"
+  triggers:
+    - trigger: state
+      entity_id: input_select.camara_asistente
+    - trigger: homeassistant
+      event: start
+  actions:
+    - action: mqtt.publish
+      data:
+        topic: casa/asistente/camara
+        payload: "{{ states('input_select.camara_asistente') }}"
+        retain: true
+
+- id: luz_espacio_vacio
+  alias: "Luz encendida sin nadie -> aviso"
+  description: >-
+    Cada minuto revisa cada cámara en línea: si no ve personas desde hace N minutos
+    y el brillo de la imagen indica luz encendida, avisa que se apague la luz.
+    Repite el aviso cada "repetir_aviso_luz" minutos mientras siga vacío con la luz encendida.
+  mode: single
+  triggers:
+    - trigger: time_pattern
+      minutes: "/1"
+  variables:
+    minutos: "{{ states('input_number.minutos_vacio_luz') | int(1) }}"
+    umbral: "{{ states('input_number.umbral_brillo_luz') | int(90) }}"
+    camaras: >-
+      {% set ns = namespace(l=[]) %}
+      {% for cam in ['iphone', 'camara1'] %}
+        {% if is_state('sensor.estado_' ~ cam, 'online')
+              and states('sensor.minutos_sin_personas_' ~ cam) | int(0) >= minutos
+              and states('sensor.brillo_' ~ cam) | int(0) >= umbral %}
+          {% set ns.l = ns.l + [cam] %}
+        {% endif %}
+      {% endfor %}
+      {{ ns.l }}
+  conditions:
+    - condition: template
+      value_template: "{{ camaras | count > 0 }}"
+    - condition: template
+      value_template: >-
+        {{ as_timestamp(now()) - as_timestamp(this.attributes.last_triggered, 0)
+           >= states('input_number.repetir_aviso_luz') | int(10) * 60 }}
+  actions:
+    - repeat:
+        for_each: "{{ camaras }}"
+        sequence:
+          - action: persistent_notification.create
+            data:
+              notification_id: "luz_{{ repeat.item }}"
+              title: "Apaga la luz: no hay nadie ({{ now().strftime('%H:%M') }})"
+              message: >-
+                La cámara {{ 'del iPhone' if repeat.item == 'iphone' else 'ESP32' }} no ve a nadie desde hace
+                {{ minutos }} min o más y la luz sigue encendida
+                (brillo {{ states('sensor.brillo_' ~ repeat.item) }} ≥ {{ umbral }}). Apaga la luz para ahorrar energía.
+          - action: script.avisar_celular
+            data:
+              title: "Apaga la luz: no hay nadie ({{ now().strftime('%H:%M') }})"
+              message: "Cámara {{ repeat.item }}: el espacio está vacío y la luz sigue encendida."
+    # Con una bombilla o enchufe inteligente integrado en HA, descomentar:
+    # - action: light.turn_off
+    #   target:
+    #     entity_id: light.cuarto
+
+- id: luz_alguien_volvio
+  alias: "Alguien volvió -> quitar aviso de luz"
+  triggers:
+    - trigger: numeric_state
+      entity_id: [sensor.personas_iphone, sensor.personas_camara1]
+      above: 0
+  actions:
+    - action: persistent_notification.dismiss
+      data:
+        notification_id: "luz_{{ trigger.entity_id.split('_')[-1] }}"
+
+- id: ajustes_auto_a_mqtt
+  alias: "Ajustes de sugerencias automáticas -> MQTT"
+  description: "Envía al cerebro cuándo sugerir solo (cantidad mínima de objetos e intervalo)"
+  triggers:
+    - trigger: state
+      entity_id:
+        - input_boolean.auto_sugerencias
+        - input_number.min_objetos_cuarto
+        - input_number.min_ingredientes_cocina
+        - input_number.intervalo_sugerencias
+    - trigger: homeassistant
+      event: start
+  actions:
+    - action: mqtt.publish
+      data:
+        topic: casa/asistente/auto
+        retain: true
+        payload: >-
+          {{ {'activo': is_state('input_boolean.auto_sugerencias', 'on'),
+              'min_cuarto': states('input_number.min_objetos_cuarto') | int(4),
+              'min_cocina': states('input_number.min_ingredientes_cocina') | int(2),
+              'intervalo_min': states('input_number.intervalo_sugerencias') | int(10),
+              'estable_s': 20,
+              'recordatorio_min': 60} | tojson }}
+
+- id: sugerencia_automatica_aviso
+  alias: "Sugerencia automática -> aviso"
+  description: "Cuando el asistente sugiere solo, muestra el modo correspondiente y avisa"
+  triggers:
+    - trigger: mqtt
+      topic: casa/asistente/respuesta
+  conditions:
+    - condition: template
+      value_template: "{{ trigger.payload_json.origen == 'auto' }}"
+  actions:
+    - action: input_select.select_option
+      target:
+        entity_id: input_select.modo_asistente
+      data:
+        option: "{{ trigger.payload_json.modo }}"
+    - action: persistent_notification.create
+      data:
+        notification_id: sugerencia_auto
+        title: >-
+          {{ 'Sugerencia para ordenar' if trigger.payload_json.modo == 'cuarto' else 'Receta sugerida' }}
+        message: "{{ trigger.payload_json.texto }}"
+    - action: script.avisar_celular
+      data:
+        title: >-
+          {{ 'Sugerencia para ordenar' if trigger.payload_json.modo == 'cuarto' else 'Receta sugerida' }}
+        message: "{{ trigger.payload_json.texto[:200] }}"
+

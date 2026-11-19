@@ -1,0 +1,173 @@
+# Entidades MQTT (el broker se añade desde Ajustes > Dispositivos > MQTT, ver README)
+sensor:
+  - name: "Inventario manzana"
+    unique_id: inventario_manzana
+    state_topic: "casa/inventario"
+    value_template: "{{ value_json.manzana | default(0) }}"
+    state_class: measurement
+    icon: mdi:counter
+  - name: "Inventario tomate"
+    unique_id: inventario_tomate
+    state_topic: "casa/inventario"
+    value_template: "{{ value_json.tomate | default(0) }}"
+    state_class: measurement
+    icon: mdi:counter
+  - name: "Inventario huevo"
+    unique_id: inventario_huevo
+    state_topic: "casa/inventario"
+    value_template: "{{ value_json.huevo | default(0) }}"
+    state_class: measurement
+    icon: mdi:counter
+  - name: "Inventario limon"
+    unique_id: inventario_limon
+    state_topic: "casa/inventario"
+    value_template: "{{ value_json.limon | default(0) }}"
+    state_class: measurement
+    icon: mdi:counter
+  - name: "Inventario zanahoria"
+    unique_id: inventario_zanahoria
+    state_topic: "casa/inventario"
+    value_template: "{{ value_json.zanahoria | default(0) }}"
+    state_class: measurement
+    icon: mdi:counter
+  - name: "Inventario leche"
+    unique_id: inventario_leche
+    state_topic: "casa/inventario"
+    value_template: "{{ value_json.leche | default(0) }}"
+    state_class: measurement
+    icon: mdi:counter
+  - name: "Inventario taza"
+    unique_id: inventario_taza
+    state_topic: "casa/inventario"
+    value_template: "{{ value_json.taza | default(0) }}"
+    state_class: measurement
+    icon: mdi:counter
+  - name: "Inventario botella"
+    unique_id: inventario_botella
+    state_topic: "casa/inventario"
+    value_template: "{{ value_json.botella | default(0) }}"
+    state_class: measurement
+    icon: mdi:counter
+  - name: "Inventario libro"
+    unique_id: inventario_libro
+    state_topic: "casa/inventario"
+    value_template: "{{ value_json.libro | default(0) }}"
+    state_class: measurement
+    icon: mdi:counter
+  - name: "Inventario zapato"
+    unique_id: inventario_zapato
+    state_topic: "casa/inventario"
+    value_template: "{{ value_json.zapato | default(0) }}"
+    state_class: measurement
+    icon: mdi:counter
+  - name: "Inventario banano"
+    unique_id: inventario_banano
+    state_topic: "casa/inventario"
+    value_template: "{{ value_json.banano | default(0) }}"
+    state_class: measurement
+    icon: mdi:counter
+  - name: "Inventario naranja"
+    unique_id: inventario_naranja
+    state_topic: "casa/inventario"
+    value_template: "{{ value_json.naranja | default(0) }}"
+    state_class: measurement
+    icon: mdi:counter
+  - name: "Inventario brocoli"
+    unique_id: inventario_brocoli
+    state_topic: "casa/inventario"
+    value_template: "{{ value_json.brocoli | default(0) }}"
+    state_class: measurement
+    icon: mdi:counter
+  - name: "Inventario mochila"
+    unique_id: inventario_mochila
+    state_topic: "casa/inventario"
+    value_template: "{{ value_json.mochila | default(0) }}"
+    state_class: measurement
+    icon: mdi:counter
+  - name: "Inventario laptop"
+    unique_id: inventario_laptop
+    state_topic: "casa/inventario"
+    value_template: "{{ value_json.laptop | default(0) }}"
+    state_class: measurement
+    icon: mdi:counter
+  - name: "Inventario celular"
+    unique_id: inventario_celular
+    state_topic: "casa/inventario"
+    value_template: "{{ value_json.celular | default(0) }}"
+    state_class: measurement
+    icon: mdi:counter
+  - name: "Personas camara1"
+    unique_id: personas_camara1
+    state_topic: "casa/camara1/presencia"
+    value_template: "{{ value_json.personas }}"
+    state_class: measurement
+    icon: mdi:account-multiple
+  - name: "Brillo camara1"
+    unique_id: brillo_camara1
+    state_topic: "casa/camara1/presencia"
+    value_template: "{{ value_json.brillo }}"
+    state_class: measurement
+    icon: mdi:brightness-6
+  - name: "Estado camara1"
+    unique_id: estado_camara1
+    state_topic: "casa/camara1/estado"
+    icon: mdi:cctv
+  - name: "Personas iphone"
+    unique_id: personas_iphone
+    state_topic: "casa/iphone/presencia"
+    value_template: "{{ value_json.personas }}"
+    state_class: measurement
+    icon: mdi:account-multiple
+  - name: "Brillo iphone"
+    unique_id: brillo_iphone
+    state_topic: "casa/iphone/presencia"
+    value_template: "{{ value_json.brillo }}"
+    state_class: measurement
+    icon: mdi:brightness-6
+  - name: "Estado iphone"
+    unique_id: estado_iphone
+    state_topic: "casa/iphone/estado"
+    icon: mdi:cctv
+  - name: "Asistente respuesta"
+    unique_id: asistente_respuesta
+    state_topic: "casa/asistente/respuesta"
+    # El estado admite máx. 255 caracteres: el texto completo va como atributo
+    value_template: "{{ value_json.ts | int | timestamp_custom('%H:%M:%S') }}"
+    json_attributes_topic: "casa/asistente/respuesta"
+    json_attributes_template: "{{ {'texto': value_json.texto, 'modo': value_json.modo, 'origen': value_json.origen} | tojson }}"
+    icon: mdi:chat-processing
+  - name: "Asistente historial"
+    unique_id: asistente_historial
+    state_topic: "casa/asistente/historial"
+    value_template: "{{ value_json.n }}"
+    json_attributes_topic: "casa/asistente/historial"
+    json_attributes_template: "{{ {'items': value_json['items']} | tojson }}"
+    icon: mdi:history
+  - name: "Asistente proxima sugerencia"
+    unique_id: asistente_proxima_sugerencia
+    state_topic: "casa/asistente/auto/estado"
+    value_template: >-
+      {% set s = value_json.segundos_para_proxima %}
+      {{ ((s.cuarto if s.cuarto < s.cocina else s.cocina) / 60) | round(0) | int }}
+    unit_of_measurement: "min"
+    json_attributes_topic: "casa/asistente/auto/estado"
+    icon: mdi:timer-sand
+  - name: "Asistente estado"
+    unique_id: asistente_estado
+    state_topic: "casa/asistente/estado"
+    icon: mdi:brain
+
+button:
+  - name: "Pedir sugerencia"
+    unique_id: asistente_pedir
+    command_topic: "casa/asistente/pedir"
+    payload_press: "boton"
+
+# Imagen con las detecciones dibujadas (servicio vision)
+camera:
+  - name: "Deteccion camara1"
+    unique_id: deteccion_camara1
+    topic: "casa/camara1/imagen"
+  - name: "Deteccion iphone"
+    unique_id: deteccion_iphone
+    topic: "casa/iphone/imagen"

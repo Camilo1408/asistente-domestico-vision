@@ -1,0 +1,129 @@
+# Home Assistant - Asistente doméstico con visión
+default_config:
+
+homeassistant:
+  name: Asistente Casa
+  time_zone: America/Bogota
+  unit_system: metric
+
+# shopping_list ya no admite YAML: se añade desde Ajustes > Dispositivos y servicios > "Shopping list"
+
+input_select:
+  modo_asistente:
+    name: Modo del asistente
+    options: [cocina, cuarto]
+    initial: cocina
+    icon: mdi:home-switch
+  camara_asistente:
+    name: Cámara del asistente
+    options: [camara1, iphone]
+    initial: camara1
+    icon: mdi:cctv
+
+input_boolean:
+  auto_sugerencias:
+    name: Sugerencias automáticas
+    initial: true
+    icon: mdi:robot-happy
+
+input_number:
+  min_objetos_cuarto:
+    name: Objetos para sugerir orden (cuarto)
+    min: 1
+    max: 20
+    step: 1
+    initial: 4
+    icon: mdi:sofa
+  min_ingredientes_cocina:
+    name: Ingredientes para sugerir receta (cocina)
+    min: 1
+    max: 20
+    step: 1
+    initial: 2
+    icon: mdi:fridge
+  intervalo_sugerencias:
+    name: Minutos mínimos entre sugerencias automáticas
+    min: 1
+    max: 120
+    step: 1
+    initial: 10
+    icon: mdi:timer-sand
+  umbral_brillo_luz:
+    name: Brillo mínimo para considerar la luz encendida
+    min: 0
+    max: 255
+    step: 5
+    initial: 90
+    icon: mdi:lightbulb-on
+  repetir_aviso_luz:
+    name: Repetir aviso de luz cada (minutos)
+    min: 1
+    max: 60
+    step: 1
+    initial: 10
+    icon: mdi:bell-ring
+  minutos_vacio_luz:
+    name: Minutos sin personas antes de avisar
+    min: 1
+    max: 60
+    step: 1
+    initial: 1
+    icon: mdi:timer-outline
+
+input_text:
+  servicio_notificacion_celular:
+    name: Servicio de notificación del celular (ej. notify.mobile_app_iphone_de_cesar)
+    initial: ""
+    max: 100
+    icon: mdi:cellphone-message
+
+# Envía al celular solo si hay un servicio configurado: evita "unknown action" en Reparaciones
+script:
+  avisar_celular:
+    alias: Avisar al celular
+    mode: queued
+    fields:
+      title:
+        description: Título
+      message:
+        description: Mensaje
+    sequence:
+      - if:
+          - condition: template
+            value_template: "{{ (states('input_text.servicio_notificacion_celular') | trim).startswith('notify.') }}"
+        then:
+          - action: "{{ states('input_text.servicio_notificacion_celular') | trim }}"
+            continue_on_error: true
+            data:
+              title: "{{ title }}"
+              message: "{{ message }}"
+
+# Minutos que lleva cada cámara sin ver personas (0 si ve a alguien). now() hace que se recalcule cada minuto.
+template:
+  - sensor:
+      - name: Minutos sin personas iphone
+        unique_id: minutos_sin_personas_iphone
+        unit_of_measurement: min
+        icon: mdi:account-off
+        state: >-
+          {% set p = states.sensor.personas_iphone %}
+          {{ ((now() - p.last_changed).total_seconds() / 60) | int if p and p.state == '0' else 0 }}
+      - name: Minutos sin personas camara1
+        unique_id: minutos_sin_personas_camara1
+        unit_of_measurement: min
+        icon: mdi:account-off
+        state: >-
+          {% set p = states.sensor.personas_camara1 %}
+          {{ ((now() - p.last_changed).total_seconds() / 60) | int if p and p.state == '0' else 0 }}
+  - binary_sensor:
+      - name: Luz encendida iphone
+        unique_id: luz_encendida_iphone
+        device_class: light
+        state: "{{ states('sensor.brillo_iphone') | int(0) >= states('input_number.umbral_brillo_luz') | int(90) }}"
+      - name: Luz encendida camara1
+        unique_id: luz_encendida_camara1
+        device_class: light
+        state: "{{ states('sensor.brillo_camara1') | int(0) >= states('input_number.umbral_brillo_luz') | int(90) }}"
+
+mqtt: !include mqtt.yaml
+automation: !include automations.yaml

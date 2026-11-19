@@ -1,0 +1,12 @@
+[
+  {"id": 1, "modo": "cocina", "objetos": {"tomate": 3, "huevo": 2, "leche": 1}, "esperado": "Receta con tomate/huevo (p. ej. huevos revueltos con tomate); no menciona zanahoria, manzana ni limon."},
+  {"id": 2, "modo": "cocina", "objetos": {"manzana": 2, "limon": 1}, "esperado": "Algo con manzana y limon (ensalada de frutas, compota); no menciona huevo ni tomate."},
+  {"id": 3, "modo": "cocina", "objetos": {"zanahoria": 4, "huevo": 3}, "esperado": "Tortilla de zanahoria o similar; no menciona tomate ni leche."},
+  {"id": 4, "modo": "cocina", "objetos": {"leche": 1}, "esperado": "Receta mínima con leche o aviso de que hay poco; no inventa otros ingredientes."},
+  {"id": 5, "modo": "cocina", "objetos": {"manzana": 3, "zanahoria": 2, "limon": 1, "leche": 1}, "esperado": "Jugo o ensalada con esos cuatro; no menciona huevo ni tomate."},
+  {"id": 6, "modo": "cuarto", "objetos": {"taza": 3, "botella": 2}, "esperado": "Índice de orden 0-100 y 3-5 acciones sobre tazas y botellas; no menciona libros ni zapatos."},
+  {"id": 7, "modo": "cuarto", "objetos": {"libro": 5, "zapato": 2}, "esperado": "Índice de orden y acciones sobre libros y zapatos; no menciona tazas ni botellas."},
+  {"id": 8, "modo": "cuarto", "objetos": {"zapato": 4}, "esperado": "Índice bajo y acciones sobre zapatos únicamente."},
+  {"id": 9, "modo": "cuarto", "objetos": {"taza": 1, "botella": 1, "libro": 1, "zapato": 1}, "esperado": "Índice medio-alto y 3-5 acciones que usan los cuatro objetos."},
+  {"id": 10, "modo": "cocina", "objetos": {"tomate": 6, "huevo": 6, "manzana": 2, "limon": 2, "zanahoria": 3, "leche": 2}, "esperado": "1 o 2 recetas usando solo ingredientes de la lista (los seis están presentes)."}
+]

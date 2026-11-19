@@ -1,0 +1,91 @@
+# Variante para una Raspberry Pi que YA tiene otro Home Assistant / Mosquitto / servicios.
+# - Todo corre en una red Docker aislada (bridge), sin network_mode: host.
+# - Puertos del host desplazados para no chocar: HA 8124, MQTT 1884, Ollama 11435.
+# - Límites de memoria para no dejar sin RAM a los servicios existentes.
+# Activar con COMPOSE_FILE=docker-compose.pi-compartida.yml y COMPOSE_PROJECT_NAME=asistente en pi/.env
+name: asistente
+
+services:
+  mosquitto:
+    image: eclipse-mosquitto:2
+    container_name: asistente-mosquitto
+    ports: ["1884:1883"]            # ESP32/simulador desde fuera: IP-de-la-Pi:1884
+    volumes:
+      - ./mosquitto:/mosquitto/config
+      - mosquitto_data:/mosquitto/data
+    restart: unless-stopped
+
+  homeassistant:
+    image: ghcr.io/home-assistant/home-assistant:stable
+    container_name: asistente-ha
+    ports: ["8124:8123"]            # http://IP-de-la-Pi:8124
+    environment:
+      - TZ=America/Bogota
+    volumes:
+      - ./ha:/config
+    mem_limit: 1g
+    restart: unless-stopped
+
+  ollama:
+    image: ollama/ollama
+    container_name: asistente-ollama
+    ports: ["127.0.0.1:11435:11434"]  # solo local, para benchmark
+    environment:
+      - OLLAMA_MAX_LOADED_MODELS=1
+      - OLLAMA_NUM_PARALLEL=1
+    volumes:
+      - ./ollama-data:/root/.ollama
+      - ./ollama/Modelfile:/Modelfile:ro
+    mem_limit: ${OLLAMA_MEM_LIMIT:-3g}
+    cpus: ${OLLAMA_CPUS:-4}           # con fuente < 27 W usar 1.5 para evitar apagones por bajo voltaje
+    restart: unless-stopped
+
+  cerebro:
+    build: ./cerebro
+    container_name: asistente-cerebro
+    environment:
+      MQTT_HOST: mosquitto
+      MQTT_PORT: "1883"
+      MQTT_USER: ${MQTT_USER}
+      MQTT_PASS: ${MQTT_PASS}
+      OLLAMA_URL: "http://ollama:11434"
+      MODEL: asistente
+      DB_PATH: /data/historial.db
+      VENTANA_MEDIANA: ${VENTANA_MEDIANA:-5}
+      OLLAMA_TIMEOUT: "300"
+    volumes:
+      - ./data:/data
+    depends_on: [mosquitto, ollama]
+    mem_limit: 256m
+    restart: unless-stopped
+
+  go2rtc:
+    image: alexxit/go2rtc:latest
+    container_name: asistente-go2rtc
+    ports: ["1984:1984"]          # panel y API: http://IP-DE-LA-PI:1984
+    environment:
+      IPHONE_URL: ${IPHONE_URL:-}
+      ESP32_URL: ${ESP32_URL:-}
+    volumes:
+      - ./go2rtc:/config
+    restart: unless-stopped
+
+  vision:
+    build: ./vision
+    container_name: asistente-vision
+    environment:
+      MQTT_HOST: mosquitto
+      MQTT_PORT: "1883"
+      MQTT_USER: ${MQTT_USER}
+      MQTT_PASS: ${MQTT_PASS}
+      CAMARAS: ${CAMARAS:-}
+      SOLO_PRESENCIA: ${SOLO_PRESENCIA:-}
+      INTERVALO: ${VISION_INTERVALO:-5}
+      HILOS: ${VISION_HILOS:-2}
+    depends_on: [mosquitto, go2rtc]
+    cpus: ${VISION_CPUS:-1}
+    mem_limit: 512m
+    restart: unless-stopped
+
+volumes:
+  mosquitto_data:

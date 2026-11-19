@@ -1,0 +1,187 @@
+# Pegar en: Tableros > Asistente > (lápiz) > ⋮ > Editor de configuración en bruto
+# Vista por secciones: Asistente | Cámara | Hogar | Ajustes
+title: Asistente Casa
+views:
+  - title: Asistente
+    path: asistente
+    icon: mdi:home-heart
+    type: sections
+    max_columns: 3
+    sections:
+      # ---------------- 1. ASISTENTE: control, sugerencia vigente e historial ----------------
+      - type: grid
+        cards:
+          - type: heading
+            heading: Asistente
+            icon: mdi:robot-happy
+            badges:
+              - type: entity
+                entity: sensor.asistente_estado
+                show_state: true
+                show_icon: true
+          - type: tile
+            entity: input_select.camara_asistente
+            name: Cámara
+            features:
+              - type: select-options
+            grid_options:
+              columns: 6
+          - type: tile
+            entity: input_select.modo_asistente
+            name: Modo
+            features:
+              - type: select-options
+            grid_options:
+              columns: 6
+          - type: tile
+            entity: button.pedir_sugerencia
+            name: Pedir sugerencia ahora
+            icon: mdi:lightbulb-on
+            tap_action:
+              action: perform-action
+              perform_action: button.press
+              target:
+                entity_id: button.pedir_sugerencia
+            grid_options:
+              columns: 12
+          - type: markdown
+            content: >-
+              {% set r = 'sensor.asistente_respuesta' %}
+              {% set modo = state_attr(r, 'modo') %}
+              {% set origen = state_attr(r, 'origen') %}
+              {% if state_attr(r, 'texto') %}
+              ### <ha-icon icon="{{ 'mdi:broom' if modo == 'cuarto' else 'mdi:chef-hat' }}"></ha-icon>
+              {{ 'Para ordenar el espacio' if modo == 'cuarto' else 'Receta sugerida' }}
+
+              {{ state_attr(r, 'texto') }}
+
+              ---
+              <small>{{ 'Automática' if origen == 'auto' else 'Pedida' }} ·
+              cámara {{ state_attr(r, 'camara') or '-' }} · {{ states(r) }}</small>
+              {% else %}
+              Aún no hay sugerencias. Apunta una cámara a la nevera o al cuarto.
+              {% endif %}
+          - type: markdown
+            title: Sugerencias anteriores
+            content: >-
+              {% set items = state_attr('sensor.asistente_historial', 'items') or [] %}
+              {% for it in items[1:] %}
+              **{{ it.hora }}** · {{ 'Cuarto' if it.modo == 'cuarto' else 'Cocina' }}
+              · {{ 'auto' if it.origen == 'auto' else 'pedida' }}
+              <details><summary>Ver</summary>{{ it.texto }}</details>
+              {% else %}
+              _Todavía no hay sugerencias anteriores._
+              {% endfor %}
+
+      # ---------------- 2. CÁMARA: video en vivo y lo que detecta el asistente ----------------
+      - type: grid
+        cards:
+          - type: heading
+            heading: Cámara
+            icon: mdi:cctv
+          - type: picture-entity
+            entity: camera.iphone_en_vivo
+            name: iPhone · en vivo
+            camera_view: live
+            show_state: false
+            visibility:
+              - condition: state
+                entity: input_select.camara_asistente
+                state: iphone
+          - type: picture-entity
+            entity: camera.deteccion_iphone
+            name: Lo que detecta el asistente
+            show_state: false
+            visibility:
+              - condition: state
+                entity: input_select.camara_asistente
+                state: iphone
+          - type: picture-entity
+            entity: camera.esp32_en_vivo
+            name: ESP32 · en vivo
+            camera_view: live
+            show_state: false
+            visibility:
+              - condition: state
+                entity: input_select.camara_asistente
+                state: camara1
+          - type: picture-entity
+            entity: camera.deteccion_camara1
+            name: Lo que detecta el asistente
+            show_state: false
+            visibility:
+              - condition: state
+                entity: input_select.camara_asistente
+                state: camara1
+          - type: markdown
+            title: Objetos detectados
+            content: >-
+              {% set modo = states('input_select.modo_asistente') %}
+              {% set clases = {'cocina': ['manzana','banano','naranja','zanahoria','brocoli','tomate','huevo','limon','leche'],
+                               'cuarto': ['taza','botella','libro','mochila','laptop','celular','zapato']}.get(modo, []) %}
+              {% set ns = namespace(t=[]) %}
+              {% for c in clases %}
+              {% set n = states('sensor.inventario_' ~ c) | int(0) %}
+              {% if n > 0 %}{% set ns.t = ns.t + ['**' ~ n ~ '** ' ~ c] %}{% endif %}
+              {% endfor %}
+              Modo **{{ modo }}**:
+              {{ ns.t | join(' · ') if ns.t else '_no se detectan objetos de este modo._' }}
+
+      # ---------------- 3. HOGAR: presencia, luces y lista de compras ----------------
+      - type: grid
+        cards:
+          - type: heading
+            heading: Hogar
+            icon: mdi:home
+          - type: glance
+            title: Presencia y luz
+            columns: 3
+            entities:
+              - entity: sensor.personas_iphone
+                name: Personas (iPhone)
+              - entity: sensor.brillo_iphone
+                name: Brillo (iPhone)
+              - entity: sensor.estado_iphone
+                name: iPhone
+              - entity: sensor.personas_camara1
+                name: Personas (ESP32)
+              - entity: sensor.brillo_camara1
+                name: Brillo (ESP32)
+              - entity: sensor.estado_camara1
+                name: ESP32
+          - type: entities
+            title: ¿Hay que apagar la luz?
+            entities:
+              - entity: binary_sensor.luz_encendida_iphone
+                name: Luz (iPhone)
+              - entity: sensor.minutos_sin_personas_iphone
+                name: Sin personas (iPhone)
+              - entity: binary_sensor.luz_encendida_camara1
+                name: Luz (ESP32)
+              - entity: sensor.minutos_sin_personas_camara1
+                name: Sin personas (ESP32)
+          - type: shopping-list
+            title: Lista de compras
+
+      # ---------------- 4. AJUSTES: cuándo sugiere solo y aviso de luces ----------------
+      - type: grid
+        cards:
+          - type: heading
+            heading: Ajustes
+            icon: mdi:tune
+          - type: entities
+            title: Sugerencias automáticas
+            show_header_toggle: false
+            entities:
+              - entity: input_boolean.auto_sugerencias
+              - entity: input_number.min_objetos_cuarto
+              - entity: input_number.min_ingredientes_cocina
+              - entity: input_number.intervalo_sugerencias
+              - entity: sensor.asistente_proxima_sugerencia
+                name: Próxima sugerencia posible en
+          - type: entities
+            title: Aviso de luz encendida sin nadie
+            entities:
+              - entity: input_number.umbral_brillo_luz
+              - entity: input_number.minutos_vacio_luz
+              - entity: input_number.repetir_aviso_luz

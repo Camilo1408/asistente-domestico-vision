@@ -1,0 +1,18 @@
+.env
+pi/mosquitto/passwd
+pi/ollama-data/
+pi/data/
+pi/ha/.storage/
+pi/ha/*.db*
+pi/ha/*.log*
+pi/ha/secrets.yaml
+firmware/esp32_fomo_mqtt/config.h
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Fotos capturadas (pueden contener personas): no se publican
+dataset/
+*.jpg
+*.jpeg
+!docs/**/*.jpg

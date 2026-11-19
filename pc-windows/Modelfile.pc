@@ -1,0 +1,5 @@
+FROM qwen2.5:1.5b
+PARAMETER num_ctx 2048
+PARAMETER num_predict 350
+PARAMETER temperature 0.3
+SYSTEM "Eres un asistente doméstico. Respondes en español, breve y usando SOLO los objetos que se te indican."

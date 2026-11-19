@@ -1,0 +1,16 @@
+# go2rtc: mantiene UNA conexión estable con cada cámara y la reparte a todos los consumidores
+# (Home Assistant en vivo, servicio vision, navegador). Reconecta solo si la cámara se cae.
+# Las URLs reales vienen de pi/.env (IPHONE_URL, ESP32_URL).
+# Panel web para probar: http://IP-DE-LA-PI:1984
+streams:
+  iphone: ${IPHONE_URL}
+  camara1: ${ESP32_URL}
+
+api:
+  listen: ":1984"
+
+rtsp:
+  listen: ":8554"
+
+log:
+  level: info
