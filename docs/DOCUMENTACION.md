@@ -120,11 +120,9 @@ Vista por secciones (`pi/ha/dashboard.yaml`):
 Escena de un escritorio vista por la cámara del iPhone, procesada por el sistema completo
 (go2rtc → vision → cerebro → Ollama → Home Assistant) en modo cuarto.
 
-![Detección: YOLO identifica 1 laptop, 1 vaso (taza), 2 botellas y 2 libros; 0 personas y brillo 100](img/deteccion.jpg)
+![Detección: 1 laptop, 1 vaso (taza), 2 botellas y 2 libros; 0 personas, brillo 100](img/deteccion.jpg)
 
-![Dashboard de Home Assistant: sugerencia automática de orden con índice 40/100, video en vivo, detecciones, presencia y ajustes](img/dashboard.jpg)
-
-![Notificaciones: la sugerencia automática para ordenar y la alerta "Apaga la luz: no hay nadie"](img/notificaciones.jpg)
+![Dashboard de Home Assistant: sugerencia automática de orden (índice 40/100), video en vivo y detecciones](img/dashboard.jpg) ![Notificaciones: sugerencia para ordenar y alerta "Apaga la luz: no hay nadie"](img/notificaciones.jpg)
 
 1. vision detecta los objetos de la escena y publica el conteo, las personas y el brillo.
 2. Con 6 objetos y la escena estable 20 s, cerebro genera **sola** la sugerencia de orden: el índice (40/100) lo
