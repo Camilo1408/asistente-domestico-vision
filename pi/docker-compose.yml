@@ -63,6 +63,8 @@ services:
       SOLO_PRESENCIA: ${SOLO_PRESENCIA:-}
       INTERVALO: ${VISION_INTERVALO:-5}
       HILOS: ${VISION_HILOS:-2}
+      MODELO: ${VISION_MODELO:-/app/yolo.onnx}
+      CONF: ${VISION_CONF:-0.35}
     depends_on: [mosquitto, go2rtc]
     cpus: ${VISION_CPUS:-1}
     mem_limit: 512m

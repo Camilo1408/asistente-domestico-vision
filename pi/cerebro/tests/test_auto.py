@@ -90,7 +90,7 @@ def test_flujo_automatico_guarda_historial(tmp_path, monkeypatch):
     os.environ["DB_PATH"] = str(tmp_path / "h.db")
     import main
     m = importlib.reload(main)
-    monkeypatch.setattr(m, "consultar_ollama", lambda prompt: "Índice de orden: 40/100. Guarda las tazas.")
+    monkeypatch.setattr(m, "consultar_ollama", lambda prompt: "Índice de orden: 90/100\n1. Guarda las tazas en la cocina.")
     c = Cliente()
     for _ in range(5):
         m.on_message(c, None, Msg("casa/camara1/detecciones", json.dumps({"conteo": DESORDEN})))
@@ -101,6 +101,7 @@ def test_flujo_automatico_guarda_historial(tmp_path, monkeypatch):
     assert m.atender_pedido(c, "auto", modos[0]) is True
     resp = json.loads(c.ultimo("casa/asistente/respuesta"))
     assert resp["origen"] == "auto" and resp["modo"] == "cuarto" and "tazas" in resp["texto"]
+    assert resp["texto"].startswith("Índice de orden: 50/100")
     hist = json.loads(c.ultimo("casa/asistente/historial"))
     assert hist["n"] == 1 and hist["items"][0]["modo"] == "cuarto"
 

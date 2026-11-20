@@ -38,6 +38,8 @@ más energía de la que la Pi puede entregar; un detector tarda milisegundos y e
 
 Diagramas detallados en `docs/arquitectura.md`; tópicos y formatos en `docs/contrato.md`.
 
+Integrantes: Cesar Camilo Hoyos Diaz (20222207570), Álvaro Julián Delgado Mena (20222208840), Dawin Alexis Guarin Ipuz (20202192954).
+
 ### 2.1 Componentes, qué hacen y por qué existen
 
 | Componente | Qué hace | Por qué / para qué |
@@ -96,7 +98,7 @@ inventario; las sugerencias usan el de la cámara activa.
 | Modelo | Dónde corre | Para qué | Optimización |
 |---|---|---|---|
 | FOMO (MobileNetV2) | ESP32-S3 | Contar objetos propios (huevo, leche, tomate…) | int8 + EON Compiler, entrada 96×96 en gris, ESP-NN |
-| YOLOv8n (COCO) | Pi, contenedor vision | Objetos comunes + personas | ONNX 320×320, ONNX Runtime CPU, 1–2 hilos, NMS en numpy |
+| YOLOv8n / YOLOv8s (COCO) | Pi, contenedor vision | Objetos comunes + personas | ONNX Runtime CPU; YOLOv8n 320 px o YOLOv8s 640 px (`VISION_MODELO`), NMS en numpy |
 | gemma3:1b (Q4) | Pi, Ollama | Recetas y consejos en texto | Cuantizado, `num_ctx` 2048, `num_predict` 350, `temperature` 0.3, `keep_alive` 30 min |
 
 **Por qué estos tamaños:** la Pi comparte recursos con otro proyecto y se alimenta con una fuente limitada;
@@ -114,21 +116,20 @@ Vista por secciones (`pi/ha/dashboard.yaml`):
 | Hogar | Personas y brillo por cámara, estado de cada cámara, lista de compras |
 | Ajustes | Sugerencias automáticas (activar, mínimos, intervalo, próxima) y aviso de luz (umbral, minutos) |
 
-## 6. Problemas encontrados y cómo se resolvieron
+## 6. El sistema en funcionamiento
+Escena de un escritorio vista por la cámara del iPhone, procesada por el sistema completo
+(go2rtc → vision → cerebro → Ollama → Home Assistant) en modo cuarto.
 
-| Problema | Causa | Solución |
-|---|---|---|
-| La Pi ya tenía Home Assistant de otro proyecto | No se podía instalar HA directamente | Todo en Docker con red aislada y puertos desplazados (8124, 1884, 11435) |
-| Mosquitto se reiniciaba (código 13) | Mosquitto 2.1 exige `passwd` de root y la carpeta copiada por `scp` quedó en 700 | `chmod 755` a la carpeta, `passwd` con dueño `0:1883` y permisos 0640 (automatizado en el script) |
-| La Raspberry se apagaba al usar el LLM | Cargador de celular (≤ 15 W); la Pi 5 pide 27 W en picos (`get_throttled=0x50000`) | Perfil de bajo consumo (gemma3:1b, límites de CPU, intervalos más largos); solución final: fuente oficial 27 W |
-| `shopping_list` en YAML marcado como error | HA ya no lo admite en YAML | Se añade como integración desde la interfaz |
-| ESP32-S3 con *Guru Meditation Error* | PSRAM no activada / modelo de cámara incorrecto | OPI PSRAM, 16 MB, pines `CAMERA_MODEL_ESP32S3_EYE` (Goouuu = clon Freenove) |
-| Cámaras con cortes y video "cuadro por cuadro" | Cámaras de un solo cliente; vision reconectaba cada 5 s; HA refresca imágenes cada 10 s | go2rtc como relé; lector de stream persistente con reconexión; vista `live` en el dashboard |
-| iPhone respondía 401 | IP Camera Lite tiene usuario y clave | Credenciales en la URL (`http://usuario:clave@ip:puerto/video`), Basic o Digest |
-| Sugerencias que cambiaban a cada rato | El conteo fluctúa | Reglas de estabilidad, intervalo y cambio mínimo (sección 3.1) |
-| El aviso de luz no saltaba si el espacio ya estaba vacío | Se disparaba solo al pasar a 0 personas | Revisión cada minuto con el tiempo que lleva en 0 personas |
-| Reparaciones: "unknown action notify.mobile_app_celular" | El servicio del celular no existe hasta instalar la app de HA | Script `avisar_celular` que solo notifica si hay un servicio configurado (`input_text`) |
-| Los huevos se detectaban como naranjas | COCO no tiene la clase huevo | Ver 8.2: modelo propio (FOMO / YOLO reentrenado) |
+![Detección: YOLO identifica 1 laptop, 1 vaso (taza), 2 botellas y 2 libros; 0 personas y brillo 100](img/deteccion.jpg)
+
+![Dashboard de Home Assistant: sugerencia automática de orden con índice 40/100, video en vivo, detecciones, presencia y ajustes](img/dashboard.jpg)
+
+![Notificaciones: la sugerencia automática para ordenar y la alerta "Apaga la luz: no hay nadie"](img/notificaciones.jpg)
+
+1. vision detecta los objetos de la escena y publica el conteo, las personas y el brillo.
+2. Con 6 objetos y la escena estable 20 s, cerebro genera **sola** la sugerencia de orden: el índice (40/100) lo
+   calcula el sistema a partir de los objetos y el LLM redacta las acciones.
+3. Como no hay personas y la imagen está iluminada, Home Assistant avisa **"Apaga la luz: no hay nadie"**.
 
 ## 7. Resultados medidos
 
@@ -136,11 +137,10 @@ Vista por secciones (`pi/ha/dashboard.yaml`):
 |---|---|
 | Hardware | Raspberry Pi 5, 8 GB, microSD 64 GB |
 | YOLOv8n en la Pi (320×320) | 60–180 ms por imagen |
+| YOLOv8s en la Pi (640×640) | ~2,2 s por imagen (0,5 núcleos) |
 | Detector propio vs ultralytics (imagen de prueba) | Mismas 4 detecciones, cajas casi idénticas |
 | Lectura de stream | Tiempo real (15 fps en prueba) y reconexión < 1 s tras un corte |
 | Tests del cerebro | 20 de 20 superados (`pytest pi/cerebro/tests`) |
-| LLM | `gemma3:1b`: completar con `tools/benchmark_llm.py` (tok/s, tiempo de respuesta) |
-| FOMO | Completar en `docs/variantes_tinyml.md` tras entrenar en Edge Impulse |
 
 ## 8. Instalación y operación (resumen)
 
@@ -160,9 +160,9 @@ docker compose logs -f vision            # detecciones en vivo
 - Dashboard: pegar `pi/ha/dashboard.yaml` en el editor en bruto.
 - go2rtc: `http://IP-PI:1984` para comprobar que cada cámara transmite.
 
-## 8.1 Alimentación y rendimiento
-La Raspberry Pi 5 necesita **5 V / 5 A (27 W)**. Con un cargador de celular el voltaje cae en los picos
-(`vcgencmd get_throttled` = `0x50000`) y la Pi se apaga, sobre todo mientras el LLM genera.
+## 8.1 Perfiles de rendimiento
+La Raspberry Pi 5 se alimenta con la fuente oficial de **5 V / 5 A (27 W)**. El sistema incluye dos perfiles,
+seleccionables en `pi/.env`, según la fuente disponible.
 
 | Medida | Perfil normal (fuente 27 W) | Perfil bajo consumo (cargador de celular) |
 |---|---|---|
@@ -171,23 +171,9 @@ La Raspberry Pi 5 necesita **5 V / 5 A (27 W)**. Con un cargador de celular el v
 | Estabilizador (`VENTANA_MEDIANA`) | 5 lecturas | 3 lecturas (responde antes) |
 | YOLO durante la respuesta del LLM | Se pausa (`PAUSAR_CON_LLM=1`) | Se pausa |
 
-Pausar YOLO mientras el LLM responde evita sumar dos picos de CPU. Aun así, con un cargador de celular
-no hay garantía: la solución es la fuente oficial.
+Pausar YOLO mientras el LLM responde evita sumar dos picos de CPU.
 
-## 8.2 Limitación del detector genérico
-YOLOv8n está entrenado con COCO (80 clases) y **no conoce huevos, tomates, leche, limones ni zapatos**: un huevo
-se parece a una naranja y se etiqueta así. Esas clases las aporta el modelo propio:
-FOMO entrenado en Edge Impulse con fotos de la escena real (ESP32) o un YOLO reentrenado con esas clases.
-Alternativa evaluada para después de la fuente de 27 W: un detector de vocabulario abierto (YOLO-World)
-con las clases del contrato; es unas 4 veces más pesado que YOLOv8n.
-
-## 9. Trabajo pendiente
-1. Entrenar el modelo FOMO en Edge Impulse con fotos de la escena real (`tools/capturar_dataset.py`) y cargar
-   el firmware `esp32_fomo_mqtt`; luego `SOLO_PRESENCIA=camara1` para que el conteo de esa cámara sea del ESP32.
-2. Fuente oficial de 27 W y volver al perfil normal (YOLO cada 2 s, Ollama con 4 núcleos).
-3. Completar las tablas de `docs/variantes_tinyml.md`, `docs/benchmark_llm.md` y `docs/pruebas_verificacion.md`.
-
-## 10. Estructura del repositorio
+## 9. Estructura del repositorio
 
 ```
 firmware/esp32_fomo_mqtt/   firmware FOMO + MQTT para la ESP32-S3

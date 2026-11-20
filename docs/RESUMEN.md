@@ -28,7 +28,7 @@ un detector tarda milisegundos y el LLM pequeño responde con poco texto.
 | Modelo | Dónde corre | Función | Optimización |
 |---|---|---|---|
 | FOMO (MobileNetV2) — Edge Impulse | ESP32-S3 | Contar objetos propios (huevo, leche, tomate…) | int8, EON Compiler, 96×96 gris |
-| YOLOv8n (COCO) | Raspberry Pi (servicio vision) | Detectar objetos comunes, personas y medir brillo | ONNX 320×320, ONNX Runtime CPU |
+| YOLOv8n / YOLOv8s (COCO) | Raspberry Pi (servicio vision) | Detectar objetos comunes, personas y medir brillo | ONNX; YOLOv8n 320 px (bajo consumo) o YOLOv8s 640 px (más preciso), configurable |
 | gemma3:1b (Q4) | Raspberry Pi (Ollama) | Recetas y consejos de orden en español | Cuantizado, contexto 1024–2048, temperatura 0.3 |
 
 ## 4. Arquitectura
@@ -63,7 +63,7 @@ un detector tarda milisegundos y el LLM pequeño responde con poco texto.
 3. cerebro estabiliza el conteo con la mediana de las últimas lecturas y publica el inventario.
 4. **Sugerencias automáticas:** con suficientes objetos (cuarto ≥ 4, cocina ≥ 2), la escena estable 20 s, el
    intervalo mínimo cumplido (10 min) y un cambio real en la escena, cerebro pide al LLM una receta o un consejo de
-   orden. La sugerencia se mantiene en pantalla, queda en el historial y se notifica.
+   orden (en el cuarto, el índice de orden lo calcula el sistema y el LLM redacta las acciones). La sugerencia se mantiene en pantalla, queda en el historial y se notifica.
 5. **Aviso de luz:** si una cámara no ve personas durante N minutos y el brillo indica luz encendida, HA avisa
    "Apaga la luz: no hay nadie" y lo repite cada 10 minutos mientras siga así.
 6. **Lista de compras:** si faltan huevos o leche, se añaden a la lista. A las 19:00 llega un resumen con una receta.
@@ -71,7 +71,22 @@ un detector tarda milisegundos y el LLM pequeño responde con poco texto.
 El dashboard tiene cuatro secciones: **Asistente** (cámara, modo, sugerencia e historial), **Cámara** (video en vivo y
 detecciones), **Hogar** (presencia, luz, lista de compras) y **Ajustes** (mínimos, intervalos y umbrales).
 
-## 6. Estructura del repositorio
+## 6. El sistema en funcionamiento
+Escena de un escritorio vista por la cámara del iPhone, procesada por el sistema completo
+(go2rtc → vision → cerebro → Ollama → Home Assistant) en modo cuarto.
+
+![Detección: YOLO identifica 1 laptop, 1 vaso (taza), 2 botellas y 2 libros; 0 personas y brillo 100](img/deteccion.jpg)
+
+![Dashboard de Home Assistant: sugerencia automática de orden con índice 40/100, video en vivo, detecciones, presencia y ajustes](img/dashboard.jpg)
+
+![Notificaciones: la sugerencia automática para ordenar y la alerta "Apaga la luz: no hay nadie"](img/notificaciones.jpg)
+
+1. vision detecta los objetos de la escena y publica el conteo, las personas y el brillo.
+2. Con 6 objetos y la escena estable 20 s, cerebro genera **sola** la sugerencia de orden: el índice (40/100) lo
+   calcula el sistema a partir de los objetos y el LLM redacta las acciones.
+3. Como no hay personas y la imagen está iluminada, Home Assistant avisa **"Apaga la luz: no hay nadie"**.
+
+## 7. Estructura del repositorio
 
 | Carpeta | Contenido |
 |---|---|
@@ -81,25 +96,12 @@ detecciones), **Hogar** (presencia, luz, lista de compras) y **Ajustes** (mínim
 | `tools/` | Simulador del ESP32, captura de dataset y benchmark del LLM |
 | `docs/` | Documentación completa, contrato MQTT, arquitectura y pruebas |
 
-## 7. Lo realizado
+## 8. Implementación
 - Stack completo en Docker en una Raspberry Pi 5 compartida con otro proyecto (puertos 8124, 1884, 11435, 1984).
 - Servicio cerebro con estabilizador, sugerencias automáticas, historial y 20 pruebas automáticas.
 - Servicio vision con YOLOv8n en ONNX (60–180 ms por imagen en la Pi), lectura continua de video y reconexión.
 - Dos cámaras intercambiables (ESP32-S3 e iPhone) con go2rtc para video fluido.
 - Home Assistant con sensores MQTT, automatizaciones (compras, luz, resumen, sugerencias) y dashboard por secciones.
-- Perfil de bajo consumo para alimentar la Pi con una fuente limitada.
-
-## 8. Problemas principales y soluciones
-
-| Problema | Solución |
-|---|---|
-| La Pi ya tenía Home Assistant de otro proyecto | Todo en Docker con red aislada y puertos desplazados |
-| La Pi se apagaba al usar el LLM (fuente insuficiente) | Modelo de 1B, límites de CPU, pausar YOLO mientras responde el LLM; recomendado: fuente de 27 W |
-| Cámaras con cortes y video lento | go2rtc como relé y lectura continua del stream |
-| Las sugerencias cambiaban a cada rato | Reglas de estabilidad, intervalo y cambio mínimo |
-| Los huevos se detectaban como naranjas | YOLO/COCO no tiene esa clase; se cubre con el modelo FOMO propio |
-
-## 9. Pendiente
-Entrenar el modelo FOMO con fotos de la escena real y cargarlo en la ESP32, y usar la fuente oficial de 27 W.
+- Perfiles de rendimiento configurables (normal y bajo consumo) desde `pi/.env`.
 
 Documentación completa: `docs/DOCUMENTACION.md`.

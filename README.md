@@ -33,16 +33,15 @@ tools/                      simulador del ESP32 y benchmark del LLM
 docs/                       contrato, arquitectura, tablas, pruebas de verificación
 ```
 
-## Qué está listo y qué falta
-
-| Listo en este repo | Lo hace el equipo (no se puede generar por código) |
+## Componentes
+| Componente | Descripción |
 |---|---|
-| Servicios Docker (Mosquitto, HA, Ollama, cerebro) | Capturar y etiquetar el dataset en Edge Impulse |
-| Servicio cerebro con mediana de 5, SQLite, prompts y tests | Entrenar las 3 variantes y exportar la librería Arduino |
-| Config de Home Assistant (sensores, botón, automatizaciones, dashboard) | Completar tablas en `docs/` con mediciones reales |
-| Firmware ESP32-S3 (WiFi, MQTT, FOMO, umbral 0.6, `/capture`) | Video de demo e informe técnico |
-| Scripts de hotspot, usuario MQTT, modelos y monitor | Ejecutar las 13 pruebas en el hardware final |
-| Simulador del ESP32 y benchmark del LLM | |
+| Servicios Docker | Mosquitto, Home Assistant, Ollama, cerebro, vision y go2rtc |
+| cerebro | Mediana de lecturas, sugerencias automáticas, historial SQLite, prompts y tests |
+| vision | YOLOv8n (ONNX) sobre las cámaras IP: objetos, personas y brillo |
+| Home Assistant | Sensores, botón, automatizaciones (compras, luz, resumen, sugerencias) y dashboard por secciones |
+| Firmware ESP32-S3 | WiFi, MQTT, FOMO, umbral 0.6, `/capture` |
+| Herramientas | Simulador del ESP32, captura de dataset, benchmark del LLM, scripts de operación |
 
 ## Puesta en marcha en la Raspberry Pi (desde cero)
 

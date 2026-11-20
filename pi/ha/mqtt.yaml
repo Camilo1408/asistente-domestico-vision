@@ -134,7 +134,7 @@ sensor:
     # El estado admite máx. 255 caracteres: el texto completo va como atributo
     value_template: "{{ value_json.ts | int | timestamp_custom('%H:%M:%S') }}"
     json_attributes_topic: "casa/asistente/respuesta"
-    json_attributes_template: "{{ {'texto': value_json.texto, 'modo': value_json.modo, 'origen': value_json.origen} | tojson }}"
+    json_attributes_template: "{{ {'texto': value_json.texto, 'modo': value_json.modo, 'origen': value_json.origen, 'camara': value_json.camara} | tojson }}"
     icon: mdi:chat-processing
   - name: "Asistente historial"
     unique_id: asistente_historial

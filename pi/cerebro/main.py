@@ -18,7 +18,8 @@ import paho.mqtt.client as mqtt
 import requests
 
 from logica import AutoSugerencias, Estabilizador, Historial, Sugerencias
-from prompts import CLASES, CLASES_POR_MODO, MENSAJE_SIN_OBJETOS, construir_prompt, faltantes
+from prompts import (CLASES, CLASES_POR_MODO, MENSAJE_SIN_OBJETOS, construir_prompt, encabezado, faltantes,
+                     limpiar_respuesta)
 
 MQTT_HOST = os.getenv("MQTT_HOST", "localhost")
 MQTT_PORT = int(os.getenv("MQTT_PORT", "1883"))
@@ -119,7 +120,7 @@ def atender_pedido(client, origen: str, modo_pedido: str | None = None) -> bool:
                 prompt += "\nAdemás, indica al final qué ingredientes faltan: " + ", ".join(f) + "."
         t0 = time.time()
         try:
-            texto = consultar_ollama(prompt)
+            texto = encabezado(modo, inv) + limpiar_respuesta(consultar_ollama(prompt))
         except Exception as e:  # red, timeout, modelo no creado...
             log.error("Ollama falló: %s", e)
             if origen == "auto":

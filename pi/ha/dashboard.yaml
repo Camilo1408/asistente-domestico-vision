@@ -57,7 +57,7 @@ views:
 
               ---
               <small>{{ 'Automática' if origen == 'auto' else 'Pedida' }} ·
-              cámara {{ state_attr(r, 'camara') or '-' }} · {{ states(r) }}</small>
+              cámara {{ state_attr(r, 'camara') or states('input_select.camara_asistente') }} · {{ states(r) }}</small>
               {% else %}
               Aún no hay sugerencias. Apunta una cámara a la nevera o al cuarto.
               {% endif %}

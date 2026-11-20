@@ -69,10 +69,19 @@ def test_prompt_vacio_devuelve_none():
     assert construir_prompt("cuarto", {"tomate": 2}) is None
 
 
-def test_prompt_cuarto_pide_indice():
+def test_prompt_cuarto_pide_acciones_con_objetos():
     p = construir_prompt("cuarto", {"zapato": 2, "taza": 1})
-    assert "Índice de orden" in p and "2 zapatos" in p
+    assert "2 zapatos" in p and "1 taza o vaso" in p and "acciones" in p
 
 
 def test_faltantes():
     assert set(faltantes({"huevo": 2, "tomate": 0})) >= {"tomate", "manzana"}
+
+
+def test_indice_orden_calculado():
+    from prompts import encabezado, indice_orden, limpiar_respuesta
+    inv = {"taza": 1, "botella": 2, "libro": 2, "laptop": 1}
+    assert encabezado("cuarto", inv).startswith("Índice de orden: 40/100 (6 objetos")
+    assert encabezado("cocina", inv) == ""
+    assert indice_orden(0) == 100 and indice_orden(30) == 5
+    assert limpiar_respuesta("Índice de orden: 20/100\n1. Guarda la taza.") == "1. Guarda la taza."
